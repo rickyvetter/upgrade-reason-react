@@ -225,6 +225,72 @@ var StatelessComponentWithoutLifecycleWithChildren = /* module */[
   /* make */MultiModules$StatelessComponentWithoutLifecycleWithChildren
 ];
 
+function Functor(T) {
+  var component = ReasonReact.statelessComponent("Test");
+  var MultiModules$Functor = function (Props) {
+    Props.prop1;
+    Props.prop2;
+    var match = Props.prop3;
+    var prop3 = match !== undefined ? match : 1;
+    return ReactCompat.useRecordApi(/* record */[
+                /* debugName */component[/* debugName */0],
+                /* reactClassInternal */component[/* reactClassInternal */1],
+                /* handedOffState */component[/* handedOffState */2],
+                /* willReceiveProps */component[/* willReceiveProps */3],
+                /* didMount */component[/* didMount */4],
+                /* didUpdate */component[/* didUpdate */5],
+                /* willUnmount */component[/* willUnmount */6],
+                /* willUpdate */component[/* willUpdate */7],
+                /* shouldUpdate */component[/* shouldUpdate */8],
+                /* render */(function (param) {
+                    return React.createElement("div", undefined, String(prop3));
+                  }),
+                /* initialState */component[/* initialState */10],
+                /* retainedProps */component[/* retainedProps */11],
+                /* reducer */component[/* reducer */12],
+                /* jsElementWrapped */component[/* jsElementWrapped */13]
+              ]);
+  };
+  return /* module */[
+          /* component */component,
+          /* make */MultiModules$Functor
+        ];
+}
+
+function FunctorWithChildren(T) {
+  var component = ReasonReact.statelessComponent("Test");
+  var MultiModules$FunctorWithChildren = function (Props) {
+    Props.prop1;
+    Props.prop2;
+    var match = Props.prop3;
+    var prop3 = match !== undefined ? match : 1;
+    var children = Props.children;
+    var children$1 = React.Children.toArray(children);
+    return ReactCompat.useRecordApi(/* record */[
+                /* debugName */component[/* debugName */0],
+                /* reactClassInternal */component[/* reactClassInternal */1],
+                /* handedOffState */component[/* handedOffState */2],
+                /* willReceiveProps */component[/* willReceiveProps */3],
+                /* didMount */component[/* didMount */4],
+                /* didUpdate */component[/* didUpdate */5],
+                /* willUnmount */component[/* willUnmount */6],
+                /* willUpdate */component[/* willUpdate */7],
+                /* shouldUpdate */component[/* shouldUpdate */8],
+                /* render */(function (param) {
+                    return React.createElement("div", undefined, String(prop3), children$1.length !== 1 ? null : children$1[0]);
+                  }),
+                /* initialState */component[/* initialState */10],
+                /* retainedProps */component[/* retainedProps */11],
+                /* reducer */component[/* reducer */12],
+                /* jsElementWrapped */component[/* jsElementWrapped */13]
+              ]);
+  };
+  return /* module */[
+          /* component */component,
+          /* make */MultiModules$FunctorWithChildren
+        ];
+}
+
 var ReducerComponentWithChildren = [MultiModules$ReducerComponentWithChildren];
 
 exports.ReducerComponent = ReducerComponent;
@@ -233,4 +299,6 @@ exports.StatelessComponent = StatelessComponent;
 exports.StatelessComponentWithChildren = StatelessComponentWithChildren;
 exports.StatelessComponentWithoutLifecycle = StatelessComponentWithoutLifecycle;
 exports.StatelessComponentWithoutLifecycleWithChildren = StatelessComponentWithoutLifecycleWithChildren;
+exports.Functor = Functor;
+exports.FunctorWithChildren = FunctorWithChildren;
 /* component Not a pure module */

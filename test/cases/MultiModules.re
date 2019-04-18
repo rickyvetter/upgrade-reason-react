@@ -102,3 +102,34 @@ module StatelessComponentWithoutLifecycleWithChildren = {
       </div>,
   };
 };
+
+
+module type X = {
+  type t;
+};
+
+module Functor = (T: X) => {
+  let component = ReasonReact.statelessComponent("Test");
+  let make = (~prop1: T.t, ~prop2=?, ~prop3=1, _children) => {
+    ...component,
+    render: _ =>
+      <div>
+        {prop3->Js.String.make->ReasonReact.string}
+      </div>,
+  };
+};
+
+module FunctorWithChildren = (T: X) => {
+  let component = ReasonReact.statelessComponent("Test");
+  let make = (~prop1: T.t, ~prop2=?, ~prop3=1, children) => {
+    ...component,
+    render: _ =>
+      <div>
+        {prop3->Js.String.make->ReasonReact.string}
+        {switch (children) {
+          | [|child|] => child
+          | _ => React.null
+          }}
+      </div>,
+  };
+};

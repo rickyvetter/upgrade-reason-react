@@ -119,3 +119,36 @@ module StatelessComponentWithoutLifecycleWithChildren = {
     });
   };
 };
+
+module type X = {type t;};
+
+module Functor = (T: X) => {
+  let component = ReasonReact.statelessComponent("Test");
+  [@react.component]
+  let make = (~prop1: T.t, ~prop2=?, ~prop3=1, ()) =>
+    ReactCompat.useRecordApi({
+      ...component,
+      render: _ => <div> prop3->Js.String.make->ReasonReact.string </div>,
+    });
+};
+
+module FunctorWithChildren = (T: X) => {
+  let component = ReasonReact.statelessComponent("Test");
+  [@react.component]
+  let make = (~prop1: T.t, ~prop2=?, ~prop3=1, ~children, ()) => {
+    let children = React.Children.toArray(children);
+    ReactCompat.useRecordApi({
+      ...component,
+      render: _ =>
+        <div>
+          prop3->Js.String.make->ReasonReact.string
+          (
+            switch (children) {
+            | [|child|] => child
+            | _ => React.null
+            }
+          )
+        </div>,
+    });
+  };
+};

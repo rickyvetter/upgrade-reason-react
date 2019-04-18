@@ -127,3 +127,58 @@ module StatelessComponentWithoutLifecycleWithChildren: {
       ReasonReact.actionless,
     );
 };
+
+
+module type X = {
+  type t;
+};
+
+module Functor: (T: X) => {
+  let component:
+    ReasonReact.componentSpec(
+      ReasonReact.stateless,
+      ReasonReact.stateless,
+      ReasonReact.noRetainedProps,
+      ReasonReact.noRetainedProps,
+      ReasonReact.actionless,
+    );
+  let make:
+    (
+      ~prop1: T.t,
+      ~prop2: 'b=?,
+      ~prop3: int=?,
+      array(ReasonReact.reactElement)
+    ) =>
+    ReasonReact.componentSpec(
+      ReasonReact.stateless,
+      ReasonReact.stateless,
+      ReasonReact.noRetainedProps,
+      ReasonReact.noRetainedProps,
+      ReasonReact.actionless,
+    );
+};
+
+module FunctorWithChildren: (T: X) => {
+  let component:
+    ReasonReact.componentSpec(
+      ReasonReact.stateless,
+      ReasonReact.stateless,
+      ReasonReact.noRetainedProps,
+      ReasonReact.noRetainedProps,
+      ReasonReact.actionless,
+    );
+  let make:
+    (
+      ~prop1: T.t,
+      ~prop2: 'b=?,
+      ~prop3: int=?,
+      array(ReasonReact.reactElement)
+    ) =>
+    ReasonReact.componentSpec(
+      ReasonReact.stateless,
+      ReasonReact.stateless,
+      ReasonReact.noRetainedProps,
+      ReasonReact.noRetainedProps,
+      ReasonReact.actionless,
+    );
+};

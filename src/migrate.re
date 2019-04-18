@@ -87,6 +87,55 @@ let rec implementionMapStructureItem = (key, mapper, item) =>
           {
             pmb_name: {txt: moduleName},
             pmb_expr:
+              {
+                pmod_desc:
+                  Pmod_functor(
+                    name,
+                    moduleType,
+                    {pmod_desc: Pmod_structure(structure)} as moduleExpression,
+                  ),
+              } as functorExpression,
+          } as moduleBinding,
+        ),
+    } as structureItem => {
+      ...structureItem,
+      pstr_desc:
+        Pstr_module({
+          ...moduleBinding,
+          pmb_expr: {
+            ...functorExpression,
+            pmod_desc:
+              Pmod_functor(
+                name,
+                moduleType,
+                {
+                  ...moduleExpression,
+                  pmod_desc:
+                    Pmod_structure(
+                      structure
+                      |. List.map(structureItem =>
+                           implementionMapStructureItem(
+                             switch (key) {
+                             | TopLevel => Nested([|moduleName|])
+                             | Nested(keys) =>
+                               Nested(keys |. Array.concat([|moduleName|]))
+                             },
+                             mapper,
+                             structureItem,
+                           )
+                         ),
+                    ),
+                },
+              ),
+          },
+        }),
+    }
+  | {
+      pstr_desc:
+        Pstr_module(
+          {
+            pmb_name: {txt: moduleName},
+            pmb_expr:
               {pmod_desc: Pmod_structure(structure)} as moduleExpression,
           } as moduleBinding,
         ),
@@ -115,7 +164,6 @@ let rec implementionMapStructureItem = (key, mapper, item) =>
           },
         }),
     }
-
   | {
       pstr_desc:
         Pstr_value(
@@ -373,6 +421,55 @@ let rec interfaceMapSignatureItem = (key, mapper, item) =>
         Psig_module(
           {
             pmd_name: {txt: moduleName},
+            pmd_type:
+              {
+                pmty_desc:
+                  Pmty_functor(
+                    name,
+                    moduleTypeDef,
+                    {pmty_desc: Pmty_signature(signatures)} as moduleType,
+                  ),
+              } as functorType,
+          } as moduleDef,
+        ),
+    } => {
+      ...item,
+      psig_desc:
+        Psig_module({
+          ...moduleDef,
+          pmd_type: {
+            ...functorType,
+            pmty_desc:
+              Pmty_functor(
+                name,
+                moduleTypeDef,
+                {
+                  ...moduleType,
+                  pmty_desc:
+                    Pmty_signature(
+                      signatures
+                      |. List.map(signature =>
+                           interfaceMapSignatureItem(
+                             switch (key) {
+                             | TopLevel => Nested([|moduleName|])
+                             | Nested(keys) =>
+                               Nested(keys |. Array.concat([|moduleName|]))
+                             },
+                             mapper,
+                             signature,
+                           )
+                         ),
+                    ),
+                },
+              ),
+          },
+        }),
+    }
+  | {
+      psig_desc:
+        Psig_module(
+          {
+            pmd_name: {txt: moduleName},
             pmd_type: {pmty_desc: Pmty_signature(signatures)} as moduleType,
           } as moduleDef,
         ),
@@ -575,10 +672,9 @@ let main = () =>
     print_endline("Usage: pass a list of .re files you'd like to convert.");
   | args =>
     read()
-    |. Set.String.keep(item
-         => Filename.extension(item) == ".re")
-         /* Uncomment next line for debug */
-         /* && ! String.contains(item, '_') */
+    |. Set.String.keep(item => Filename.extension(item) == ".re")
+    /* Uncomment next line for debug */
+    /* && ! String.contains(item, '_') */
     |. Set.String.forEach(fileName => {
          let outputDir =
            args |. Array.some(item => item == "--demo") ? "output/" : "";

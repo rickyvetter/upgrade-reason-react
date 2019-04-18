@@ -8,320 +8,640 @@ open Asttypes;
 open Parsetree;
 open Longident;
 
-let unitExpr = Exp.construct({loc: Location.none, txt: Lident("()")}, None);
+type moduleLocation =
+  | TopLevel
+  | Nested(array(string));
 
-let hasWeirdHyphens = ({txt}) => {
-  switch (txt) {
-  | Lident(name) when String.length(name) > 5
-    && name.[0] === 'd'
-    && name.[1] === 'a'
-    && name.[2] === 't'
-    && name.[3] === 'a'
-    && name.[4] === '-'
-    => true /* aria-foo is fine. Transformed later to ariaFoo */
-  | _ => false
-  }
-};
+module StringArrayComparable =
+  Id.MakeComparable({
+    type t = moduleLocation;
+    let cmp = compare;
+  });
 
-let camelCaseAriaIfExists = (label) => {
-  let len = String.length(label);
-  if (len > 5
-    && label.[0] === 'a'
-    && label.[1] === 'r'
-    && label.[2] === 'i'
-    && label.[3] === 'a'
-    && label.[4] === '-') {
-    "aria" ++ String.capitalize(String.sub(label, 5, len - 5))
-  } else {
-    label
-  }
-};
+module Filename = {
+  let is_dir_sep = (s, i) => s.[i] == '/';
 
-let prospectiveComponents: ref(list(string)) = ref([]);
-let prospectiveComponentMakePairs = ref([]);
-let outerStructure = ref(true);
-
-let findFirstComponentLikeReturnValue = (expr) => {
-  /* [arg_label] */
-  let propsList = ref([]);
-  let rec findFirstComponentLikeReturnValueRec = (expr) => {
-    switch (expr) {
-    | {
-      pexp_desc: Pexp_fun(argLabel, _, _, innerExpression)
-    } =>
-      switch (argLabel) {
-      | Labelled(foo) | Optional(foo) => propsList := [argLabel, ...propsList^]
-      | Nolabel => ()
-      };
-      findFirstComponentLikeReturnValueRec(innerExpression)
-    | {
-      pexp_desc: Pexp_let(_, _, innerExpression)
-    } => findFirstComponentLikeReturnValueRec(innerExpression)
-    | {
-      pexp_desc: Pexp_record(_, Some({
-        pexp_desc: Pexp_ident({txt: Lident(txt)})
-      }))
-    } => List.getBy(prospectiveComponents^, (el) => el == txt)
-    | {
-      pexp_desc: Pexp_apply({
-      pexp_desc: Pexp_ident({txt: Lident("wrapJsForReason") | Ldot(_, "wrapJsForReason")})
-    }, _)
-    } => Some("")
-    | _ => None
-    }
-  };
-  let maybeReturnValue = findFirstComponentLikeReturnValueRec(expr);
-  (maybeReturnValue, propsList^);
-};
-
-let lidentLoc = lident => {loc: Location.none, txt: lident};
-
-let safeTypeFromValue = valueStr => switch (String.sub(valueStr, 0, 1)) {
-| "_" => "T" ++ valueStr
-| _ => valueStr
-};
-
-let rec recursivelyMakeNamedArgsForExternal = (list, args) =>
-  switch (list) {
-  | [label, ...tl] =>
-    recursivelyMakeNamedArgsForExternal(
-      tl,
-      Typ.arrow(
-        label,
-        Typ.var(safeTypeFromValue(
-          switch (label) {
-          | Labelled(str)
-          | Optional(str) => str
-          | _ => raise(Invalid_argument("This should never happen."))
-          },
-        )),
-        args,
-      ),
-    )
-  | [] => args
-  };
-
-let refactorMapper = {
-  ...default_mapper,
-  value_binding: (mapper, item) =>  {
-    switch (item) {
-    | {
-      pvb_pat: {
-        ppat_desc: Ppat_var({txt})
-      },
-      pvb_expr: {
-        pexp_desc: Pexp_apply({
-          pexp_desc: Pexp_ident({txt:
-            Lident("basicComponent") | Lident("statelessComponent") | Lident("statelessComponentWithRetainedProps") | Lident("reducerComponent") | Lident("reducerComponentWithRetainedProps") | 
-            Ldot(_, "basicComponent") | Ldot(_, "statelessComponent") | Ldot(_, "statelessComponentWithRetainedProps") | Ldot(_, "reducerComponent") | Ldot(_, "reducerComponentWithRetainedProps")
-          })
-        }, _)
-      }} => prospectiveComponents := [txt, ...prospectiveComponents^]
-    | {
-        pvb_pat: {
-          ppat_desc: Ppat_var({txt})
-        },
-        pvb_expr: {
-        pexp_desc: Pexp_fun(_, _, _, _)
-      } as expression} => 
-      let (makeForComponent, args) = findFirstComponentLikeReturnValue(expression);
-      switch (makeForComponent) {
-      | Some(component) =>
-        let pairs = List.head(prospectiveComponentMakePairs^);
-        switch (pairs) {
-        | Some(pairs) =>
-          pairs := [(component, txt, args), ...pairs^];
-        | None => ()
-        };
-      | None => ()
-      }
-    | _ => ();
-    };
-    default_mapper.value_binding(mapper, item)
-  },
-  structure: (mapper, item) => {
-    let isOuterStructure = outerStructure^;
-    outerStructure := false;
-    let pairs = ref([]);
-    prospectiveComponentMakePairs := [pairs, ...prospectiveComponentMakePairs^];
-    let mapped = default_mapper.structure(mapper, item);
-    let newStructureItems = List.reduce(List.reverse(pairs^), [], (acc, (component, make, args)) => {
-      let realArgs = args;
-      let args = List.concat(
-        args,
-        [Labelled("children")],
-      );
-      let propType = Typ.constr(
-        lidentLoc(Ldot(Lident("Js"), "t")),
-        [
-          Typ.object_(
-            List.map(args, arg =>
-              switch (arg) {
-              | Labelled(name) => (name, [], Typ.var(safeTypeFromValue(name)))
-              | Optional(name) => (
-                  name,
-                  [],
-                  Typ.constr(
-                    lidentLoc(Lident("option")),
-                    [Typ.var(safeTypeFromValue(name))],
-                  ),
-                )
-              | Nolabel => raise(Invalid_argument("This should never happen"))
-              }
-            ),
-            Closed,
-          ),
-        ],
-      );
-      List.concat(acc, [
-      Str.value(Nonrecursive, [
-        Vb.mk(
-          ~attrs=[(
-            lidentLoc("ocaml.doc"),
-            PStr([Str.eval(Exp.constant(Const.string(
-              "\n * This is a wrapper created to let this component be used from the new React api.\n * Please convert this component to a [@react.component] function and then remove this wrapping code.\n "
-            )))])
-          )],
-          Pat.var(lidentLoc(make)),
-          Exp.apply(
-            Exp.ident(lidentLoc(Ldot(Lident("ReasonReactCompat"), "wrapReasonReactForReact"))),
-            [
-              (Labelled("component"), switch (component) {
-              | "" => Exp.apply(
-                  Exp.ident(lidentLoc(Ldot(Lident("ReasonReact"), "statelessComponent"))),
-                  [(Nolabel, Exp.constant(Const.string("TemporaryRefactorComponent")))]
-                )
-                | component => Exp.ident(lidentLoc(Lident(component)))
-              }),
-              (Nolabel, Exp.fun_(Nolabel, None, Pat.constraint_(Pat.var(lidentLoc("reactProps")), propType), Exp.apply(
-                Exp.ident(lidentLoc(Lident(make))),
-                List.concat(
-                  List.map(realArgs, (arg) => switch arg {
-                  | Labelled(name) | Optional(name) => (arg, Exp.apply(
-                    Exp.ident(lidentLoc(Lident("##"))),
-                    [
-                      (Nolabel, Exp.ident(lidentLoc(Lident("reactProps")))),
-                      (Nolabel, Exp.ident(lidentLoc(Lident(name))))
-                    ]))
-                  | Nolabel => raise(Invalid_argument("This should not ever happen."))
-                  }),
-                  [
-                    (Nolabel, Exp.apply(
-                    Exp.ident(lidentLoc(Lident("##"))),
-                    [
-                      (Nolabel, Exp.ident(lidentLoc(Lident("reactProps")))),
-                      (Nolabel, Exp.ident(lidentLoc(Lident("children"))))
-                    ]))
-                  ]
-                )
-              )))
-            ]
-          )
-        )
-      ]),
-      Str.primitive(
-        Val.mk(
-          ~attrs=[(lidentLoc("bs.obj"), PStr([]))],
-          ~prim=[""],
-          lidentLoc(make ++ "Props"),
-          recursivelyMakeNamedArgsForExternal(
-            args,
-            Typ.arrow(Nolabel, Typ.constr(lidentLoc(Lident("unit")), []), propType)
-          )
-        )
-      )
-      ])
-    });
-    let [_, ...pairs] = prospectiveComponentMakePairs^;
-    prospectiveComponentMakePairs := pairs;
-    let structureItems = List.concat(mapped, newStructureItems);
-    structureItems
-  },
-  expr: (mapper, item) =>
-    switch (item) {
-    /* ReasonReact.string|array|null => React.string|array|null */
-    | {pexp_desc: Pexp_ident({loc, txt: Ldot(Lident("ReasonReact"), ("string" | "array" | "null") as name)})} =>
-      {...item, pexp_desc: Pexp_ident({loc, txt: Ldot(Lident("React"), name)})}
-    | anythingElse => default_mapper.expr(mapper, anythingElse)
-    },
-  value_description: (mapper, valueDescription) => {
-    let isComponent = ref(false);
-    let rec transformType = (coreType) => switch (coreType) {
-    | {ptyp_desc: Ptyp_arrow((Labelled(_) | Optional(_)) as label, paramType, innerType)} =>
-      {...coreType, ptyp_desc: Ptyp_arrow(label, paramType, transformType(innerType))}
-    | {ptyp_desc: Ptyp_arrow(Nolabel, paramType, innerType)} =>
-      {...coreType, ptyp_desc: Ptyp_arrow(Labelled("children"), paramType, transformType(innerType))}
-    | {ptyp_desc: Ptyp_constr({txt: Ldot(Lident("ReasonReact"), "component") | Lident("component")} as loc, typeArguments)} =>
-      isComponent := true;
-      {...coreType, ptyp_desc: Ptyp_constr({...loc, txt: Ldot(Lident("React"), "element")}, [])}
-    | otherType => otherType
-    };
-    let newType = transformType(valueDescription.pval_type);
-    let transformed = if (isComponent^) {
-      {
-        ...valueDescription,
-        pval_attributes: [
-          ({txt: "react.component", loc: valueDescription.pval_loc}, PStr([])),
-          ...valueDescription.pval_attributes
-        ],
-        pval_type: newType,
-      }
-    } else {
-      valueDescription
-    };
-    default_mapper.value_description(mapper, transformed);
-  }
-};
-
-switch (Sys.argv) {
-| [||]
-| [|_|]
-| [|_, "help" | "-help" | "--help"|] =>
-  print_endline("Usage: pass a list of .re files you'd like to convert.")
-| arguments =>
-  let validFiles =
-    Array.slice(arguments, ~offset=1, ~len=Array.length(arguments) - 1)
-    |. Array.keep(file => {
-      let isReason = Filename.check_suffix(file, ".re") || Filename.check_suffix(file, ".rei");
-      if (isReason) {
-        if (Sys.file_exists(file)) {
-          true
-        } else {
-          print_endline(file ++ " doesn't exist. Skipped.");
-          false
-        }
+  let extension_len = name => {
+    let rec check = (i0, i) =>
+      if (i < 0 || is_dir_sep(name, i)) {
+        0;
+      } else if (name.[i] == '.') {
+        check(i0, i - 1);
       } else {
-        false
-      }
-    });
-  switch (validFiles) {
-  | [||] => print_endline("You didn't pass any Reason file to convert.");
-  | files =>
-    Array.forEach(files, file => {
-      let ic = open_in_bin(file);
-      let lexbuf = Lexing.from_channel(ic);
-      let (ast, comments) =
-      Refmt_api.Reason_toolchain.RE.implementation_with_comments(
-        lexbuf
-        );
-      let newAst = refactorMapper.structure(refactorMapper, ast);
-      let target = file;
-      let oc = open_out_bin(target);
-      let formatter = Format.formatter_of_out_channel(oc);
-      Refmt_api.Reason_toolchain.RE.print_implementation_with_comments(
-        formatter,
-        (newAst, comments)
-        );
-      let _cleanup = {
-        prospectiveComponentMakePairs := [];
-        prospectiveComponents := [];
-        outerStructure := true;
+        String.length(name) - i0;
       };
-      Format.print_flush();
-      close_out(oc);
-    });
-    print_endline(
-      "\nDone! Please build your project again. It's possible that it fails; if so, it's expected. Check the changes this script made."
-    );
-  }
+    let rec search_dot = i =>
+      if (i < 0 || is_dir_sep(name, i)) {
+        0;
+      } else if (name.[i] == '.') {
+        check(i, i - 1);
+      } else {
+        search_dot(i - 1);
+      };
+    search_dot(String.length(name) - 1);
+  };
+  let extension = name => {
+    let l = extension_len(name);
+    if (l == 0) {
+      "";
+    } else {
+      String.sub(name, String.length(name) - l, l);
+    };
+  };
+  let chop_extension = name => {
+    let l = extension_len(name);
+    if (l == 0) {
+      invalid_arg("Filename.chop_extension");
+    } else {
+      String.sub(name, 0, String.length(name) - l);
+    };
+  };
+  let remove_extension = name => {
+    let l = extension_len(name);
+    if (l == 0) {
+      name;
+    } else {
+      String.sub(name, 0, String.length(name) - l);
+    };
+  };
 };
+
+let printModuleLocation =
+  fun
+  | TopLevel => "TopLevel"
+  | Nested(keys) =>
+    keys
+    |. Array.reduce("", (acc, value) =>
+         (acc == "" ? acc : acc ++ ".") ++ value
+       );
+
+let childrenUsageMap:
+  MutableMap.t(moduleLocation, bool, StringArrayComparable.identity) =
+  MutableMap.make(~id=(module StringArrayComparable));
+
+let rec implementionMapStructureItem = (key, mapper, item) =>
+  switch (item) {
+  | {
+      pstr_desc:
+        Pstr_module(
+          {
+            pmb_name: {txt: moduleName},
+            pmb_expr:
+              {pmod_desc: Pmod_structure(structure)} as moduleExpression,
+          } as moduleBinding,
+        ),
+    } as structureItem => {
+      ...structureItem,
+      pstr_desc:
+        Pstr_module({
+          ...moduleBinding,
+          pmb_expr: {
+            ...moduleExpression,
+            pmod_desc:
+              Pmod_structure(
+                structure
+                |. List.map(structureItem =>
+                     implementionMapStructureItem(
+                       switch (key) {
+                       | TopLevel => Nested([|moduleName|])
+                       | Nested(keys) =>
+                         Nested(keys |. Array.concat([|moduleName|]))
+                       },
+                       mapper,
+                       structureItem,
+                     )
+                   ),
+              ),
+          },
+        }),
+    }
+
+  | {
+      pstr_desc:
+        Pstr_value(
+          recFlag,
+          [
+            {
+              pvb_pat: {ppat_desc: Ppat_var({txt: "make"})},
+              pvb_expr: expression,
+            } as value,
+          ],
+        ),
+    } as letBinding =>
+    let foundReturnComponent = ref(false);
+    let rec mapBody = expression =>
+      switch (expression) {
+      | {
+          pexp_desc:
+            Pexp_fun(Nolabel, None, {ppat_desc: Ppat_any} as pattern, body),
+        } as item => {
+          ...item,
+          pexp_desc: Pexp_fun(Nolabel, None, pattern, mapBody(body)),
+        }
+      | {pexp_desc: Pexp_fun(label, defaultValue, pattern, body)} as item => {
+          ...item,
+          pexp_desc: Pexp_fun(label, defaultValue, pattern, mapBody(body)),
+        }
+      | {pexp_desc: Pexp_let(recFlag, valueBindings, next)} as item => {
+          ...item,
+          pexp_desc: Pexp_let(recFlag, valueBindings, mapBody(next)),
+        }
+      | {
+          pexp_desc:
+            Pexp_record(
+              items,
+              Some({pexp_desc: Pexp_ident({txt: Lident("component")})}),
+            ),
+        } as record =>
+        foundReturnComponent := true;
+        {
+          pexp_loc: Location.none,
+          pexp_attributes: [],
+          pexp_desc:
+            Pexp_apply(
+              {
+                pexp_desc:
+                  Pexp_ident({
+                    txt: Lident("ReactCompat.useRecordApi"),
+                    loc: Location.none,
+                  }),
+                pexp_loc: Location.none,
+                pexp_attributes: [],
+              },
+              [(Nolabel, record)],
+            ),
+        };
+      | _ as expression => expression
+      };
+    let body = mapBody(expression);
+    let rec mapChildren = expression =>
+      switch (expression) {
+      | {
+          pexp_desc:
+            Pexp_fun(Nolabel, None, {ppat_desc: Ppat_any} as pattern, body),
+        } as item =>
+        if (foundReturnComponent^) {
+          childrenUsageMap |. MutableMap.set(key, false);
+          {
+            ...item,
+            pexp_desc:
+              Pexp_fun(
+                Nolabel,
+                None,
+                {
+                  ...pattern,
+                  ppat_desc:
+                    Ppat_construct(
+                      {loc: Location.none, txt: Lident("()")},
+                      None,
+                    ),
+                },
+                mapChildren(body),
+              ),
+          };
+        } else {
+          item;
+        }
+      | {
+          pexp_desc:
+            Pexp_fun(
+              Nolabel,
+              None,
+              {ppat_desc: Ppat_var({txt})} as pattern,
+              body,
+            ),
+        } as item
+          when txt.[0] == '_' =>
+        if (foundReturnComponent^) {
+          childrenUsageMap |. MutableMap.set(key, false);
+          {
+            ...item,
+            pexp_desc:
+              Pexp_fun(
+                Nolabel,
+                None,
+                {
+                  ...pattern,
+                  ppat_desc:
+                    Ppat_construct(
+                      {loc: Location.none, txt: Lident("()")},
+                      None,
+                    ),
+                },
+                mapChildren(body),
+              ),
+          };
+        } else {
+          item;
+        }
+      | {
+          pexp_desc:
+            Pexp_fun(
+              Nolabel,
+              None,
+              {ppat_desc: Ppat_var({txt})} as pattern,
+              body,
+            ),
+        } as item =>
+        if (foundReturnComponent^) {
+          childrenUsageMap |. MutableMap.set(key, true);
+          {
+            ...item,
+            pexp_desc:
+              Pexp_fun(
+                Labelled("children"),
+                None,
+                {...pattern, ppat_desc: Ppat_var({loc: Location.none, txt})},
+                {
+                  ...item,
+                  pexp_desc:
+                    Pexp_fun(
+                      Nolabel,
+                      None,
+                      {
+                        ...pattern,
+                        ppat_desc:
+                          Ppat_construct(
+                            {loc: Location.none, txt: Lident("()")},
+                            None,
+                          ),
+                      },
+                      {
+                        ...item,
+                        pexp_desc:
+                          Pexp_let(
+                            Nonrecursive,
+                            [
+                              {
+                                pvb_pat: {
+                                  ppat_desc:
+                                    Ppat_var({loc: Location.none, txt}),
+                                  ppat_loc: Location.none,
+                                  ppat_attributes: [],
+                                },
+                                pvb_expr: {
+                                  pexp_desc:
+                                    Pexp_apply(
+                                      {
+                                        pexp_desc:
+                                          Pexp_ident({
+                                            loc: Location.none,
+                                            txt:
+                                              Lident(
+                                                "React.Children.toArray",
+                                              ),
+                                          }),
+                                        pexp_loc: Location.none,
+                                        pexp_attributes: [],
+                                      },
+                                      [
+                                        (
+                                          Nolabel,
+                                          {
+                                            pexp_desc:
+                                              Pexp_ident({
+                                                loc: Location.none,
+                                                txt: Lident(txt),
+                                              }),
+                                            pexp_loc: Location.none,
+                                            pexp_attributes: [],
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  pexp_loc: Location.none,
+                                  pexp_attributes: [],
+                                },
+                                pvb_attributes: [],
+                                pvb_loc: Location.none,
+                              },
+                            ],
+                            mapChildren(body),
+                          ),
+                      },
+                    ),
+                },
+              ),
+          };
+        } else {
+          item;
+        }
+      | {pexp_desc: Pexp_fun(label, defaultValue, pattern, body)} as item => {
+          ...item,
+          pexp_desc:
+            Pexp_fun(label, defaultValue, pattern, mapChildren(body)),
+        }
+      | {pexp_desc: Pexp_let(recFlag, valueBindings, next)} as item => {
+          ...item,
+          pexp_desc: Pexp_let(recFlag, valueBindings, mapChildren(next)),
+        }
+      | _ as expression => expression
+      };
+    let body = mapChildren(body);
+    {
+      ...letBinding,
+      pstr_desc:
+        Pstr_value(
+          recFlag,
+          [
+            {
+              ...value,
+              pvb_expr: body,
+              pvb_attributes:
+                foundReturnComponent^ ?
+                  [
+                    ({txt: "react.component", loc: Location.none}, PStr([])),
+                    ...value.pvb_attributes,
+                  ] :
+                  value.pvb_attributes,
+            },
+          ],
+        ),
+    };
+  | _ => default_mapper.structure_item(mapper, item)
+  };
+
+let implementationRefactorMapper = {
+  ...default_mapper,
+  structure_item: implementionMapStructureItem(TopLevel),
+};
+
+let rec interfaceMapSignatureItem = (key, mapper, item) =>
+  switch (item) {
+  | {
+      psig_desc:
+        Psig_module(
+          {
+            pmd_name: {txt: moduleName},
+            pmd_type: {pmty_desc: Pmty_signature(signatures)} as moduleType,
+          } as moduleDef,
+        ),
+    } => {
+      ...item,
+      psig_desc:
+        Psig_module({
+          ...moduleDef,
+          pmd_type: {
+            ...moduleType,
+            pmty_desc:
+              Pmty_signature(
+                signatures
+                |. List.map(signature =>
+                     interfaceMapSignatureItem(
+                       switch (key) {
+                       | TopLevel => Nested([|moduleName|])
+                       | Nested(keys) =>
+                         Nested(keys |. Array.concat([|moduleName|]))
+                       },
+                       mapper,
+                       signature,
+                     )
+                   ),
+              ),
+          },
+        }),
+    }
+  | {
+      psig_desc:
+        Psig_value(
+          {pval_name: {txt: "make"}, pval_type} as valueDescription,
+        ),
+    } as makeType =>
+    let rec returnsAComponent = ({ptyp_desc} as t) =>
+      switch (ptyp_desc) {
+      | Ptyp_constr(
+          {
+            txt:
+              Ldot(Lident("ReasonReact"), "componentSpec" | "component") as x |
+              Lapply(_) as x |
+              Lident(_) as x,
+          },
+          _,
+        ) =>
+        true
+      | Ptyp_arrow(Nolabel, arg, coreType) => returnsAComponent(coreType)
+      | Ptyp_arrow(_, arg, coreType) => returnsAComponent(coreType)
+      | _ => false
+      };
+    let doesReturnAComponent = returnsAComponent(pval_type);
+    if (doesReturnAComponent) {
+      let rec replaceReturnedComponent = ({ptyp_desc} as t) =>
+        switch (ptyp_desc) {
+        | Ptyp_constr(
+            {
+              txt:
+                Ldot(Lident("ReasonReact"), "componentSpec" | "component") as x |
+                Lapply(_) as x |
+                Lident(_) as x,
+            },
+            _,
+          ) => {
+            ...t,
+            ptyp_desc:
+              Ptyp_constr(
+                {loc: Location.none, txt: Ldot(Lident("React"), "element")},
+                [],
+              ),
+          }
+        | Ptyp_arrow(Nolabel, arg, coreType) =>
+          if (childrenUsageMap
+              |. MutableMap.get(key)
+              |. Option.getWithDefault(false)) {
+            {
+              ...t,
+              ptyp_desc:
+                Ptyp_arrow(
+                  Labelled("children"),
+                  switch (arg) {
+                  | {
+                      ptyp_desc:
+                        Ptyp_constr(
+                          {txt: Lident("array")},
+                          [
+                            {
+                              ptyp_desc:
+                                Ptyp_constr(
+                                  {
+                                    txt:
+                                      Ldot(
+                                        Lident("ReasonReact"),
+                                        "reactElement",
+                                      ),
+                                  },
+                                  [],
+                                ),
+                            },
+                          ],
+                        ),
+                    } => {
+                      ...arg,
+                      ptyp_desc:
+                        Ptyp_constr(
+                          {txt: Lident("React.element"), loc: Location.none},
+                          [],
+                        ),
+                    }
+                  | _ => arg
+                  },
+                  {
+                    ...t,
+                    ptyp_desc:
+                      Ptyp_arrow(
+                        Nolabel,
+                        {
+                          ...arg,
+                          ptyp_desc:
+                            Ptyp_constr(
+                              {txt: Lident("unit"), loc: Location.none},
+                              [],
+                            ),
+                        },
+                        replaceReturnedComponent(coreType),
+                      ),
+                  },
+                ),
+            };
+          } else {
+            {
+              ...t,
+              ptyp_desc:
+                Ptyp_arrow(
+                  Nolabel,
+                  {
+                    ...arg,
+                    ptyp_desc:
+                      Ptyp_constr(
+                        {txt: Lident("unit"), loc: Location.none},
+                        [],
+                      ),
+                  },
+                  replaceReturnedComponent(coreType),
+                ),
+            };
+          }
+
+        | Ptyp_arrow(label, arg, coreType) => {
+            ...t,
+            ptyp_desc:
+              Ptyp_arrow(label, arg, replaceReturnedComponent(coreType)),
+          }
+        | x => t
+        };
+      {
+        ...makeType,
+        psig_desc:
+          Psig_value({
+            ...valueDescription,
+            pval_attributes: [
+              ({txt: "react.component", loc: Location.none}, PStr([])),
+              ...valueDescription.pval_attributes,
+            ],
+            pval_type: replaceReturnedComponent(valueDescription.pval_type),
+          }),
+      };
+    } else {
+      item;
+    };
+  | _ => item
+  };
+
+let interfaceRefactorMapper = {
+  ...default_mapper,
+  signature_item: interfaceMapSignatureItem(TopLevel),
+};
+
+let read = () => {
+  let set = ref(Belt.Set.String.empty);
+  let rec read = () =>
+    try (
+      {
+        set := set^ |. Belt.Set.String.add(stdin |. input_line);
+        read();
+      }
+    ) {
+    | End_of_file => ()
+    };
+  read();
+  set^;
+};
+
+let main = () =>
+  switch (Sys.argv) {
+  | [||]
+  | [|"help" | "-help" | "--help"|] =>
+    print_endline("upgrade-reason-react");
+    print_endline("Helps you migrate ReasonReact from 0.6 to 0.7");
+    print_endline("Usage: find src/**/*.re | migrate");
+    print_endline("Usage: pass a list of .re files you'd like to convert.");
+  | args =>
+    read()
+    |. Set.String.keep(item
+         => Filename.extension(item) == ".re")
+         /* Uncomment next line for debug */
+         /* && ! String.contains(item, '_') */
+    |. Set.String.forEach(fileName => {
+         let outputDir =
+           args |. Array.some(item => item == "--demo") ? "output/" : "";
+         let file = fileName |. Filename.remove_extension;
+         let ic = open_in_bin(file ++ ".re");
+         let lexbuf = Lexing.from_channel(ic);
+         let (ast, comments) =
+           Refmt_api.Reason_toolchain.RE.implementation_with_comments(lexbuf);
+         let newAst =
+           implementationRefactorMapper.structure(
+             implementationRefactorMapper,
+             ast,
+           );
+         /* Uncomment for debug */
+         /*
+          childrenUsageMap
+          |. MutableMap.forEach((key, value) =>
+               switch (key) {
+               | TopLevel =>
+                 value ?
+                   print_endline("TopLevel.make used children") :
+                   print_endline("TopLevel.make didn't use children")
+               | Nested(keys) =>
+                 let moduleName =
+                   keys
+                   |. Array.reduce("", (acc, value) =>
+                        (acc == "" ? acc : acc ++ ".") ++ value
+                      );
+                 value ?
+                   print_endline(moduleName ++ ".make used children") :
+                   print_endline(moduleName ++ ".make didn't use children");
+               }
+             ); */
+         let target = outputDir ++ file ++ ".re";
+         let oc = open_out_bin(target);
+         if (Sys.file_exists(file ++ ".rei")) {
+           let ic = open_in_bin(file ++ ".rei");
+           let lexbuf = Lexing.from_channel(ic);
+           let (ast, comments) =
+             Refmt_api.Reason_toolchain.RE.interface_with_comments(lexbuf);
+           let newAst =
+             interfaceRefactorMapper.signature(interfaceRefactorMapper, ast);
+           let target = outputDir ++ file ++ ".rei";
+           let oc = open_out_bin(target);
+           let formatter = Format.formatter_of_out_channel(oc);
+           Refmt_api.Reason_toolchain.RE.print_interface_with_comments(
+             formatter,
+             (newAst, comments),
+           );
+           Format.print_flush();
+           print_endline("Done " ++ target);
+           close_out(oc);
+         };
+         let formatter = Format.formatter_of_out_channel(oc);
+         Refmt_api.Reason_toolchain.RE.print_implementation_with_comments(
+           formatter,
+           (newAst, comments),
+         );
+         Format.print_flush();
+         print_endline("Done " ++ target);
+         close_out(oc);
+       });
+    print_endline("Done!");
+  };
+
+main();

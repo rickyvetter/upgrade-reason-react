@@ -1,4 +1,9 @@
 .DS_Store
 .merlin
 /node_modules/
+/output/test/node_modules/
+/output/test/lib/
 /lib/
+*__migrated.re
+*__migrated.rei
+.bsb.lock

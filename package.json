@@ -6,7 +6,8 @@
   "scripts": {
     "start": "bsb -w",
     "clean": "bsb -clean",
-    "postinstall": "bsb"
+    "postinstall": "bsb",
+    "test": "cd output/test && rm -fr cases && mkdir cases && yarn && cd ../.. && bsb && find test/cases/*.re | lib/bs/bytecode/migrate.byte --demo && cd output/test && ./node_modules/.bin/bsb -make-world"
   },
   "files": [
     "src/refmt_api.ml",

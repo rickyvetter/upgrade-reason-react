@@ -5,7 +5,7 @@
 ### Usage
 
 ```console
-find src/**/*.re | ./node_modules/upgrade-reason-react/lib/bs/bytecode/migrate.byte
+find src -name "*.re" | ./node_modules/upgrade-reason-react/lib/bs/bytecode/migrate.byte
 ```
 
 ### Known issues

@@ -1,3 +1,7 @@
+# You probably want https://github.com/bloodyowl/upgrade-reason-react-esy instead
+
+---
+
 ## ReasonReact migration script
 
 **Experimental, use with caution!**

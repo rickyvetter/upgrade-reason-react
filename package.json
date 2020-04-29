@@ -1,6 +1,6 @@
 {
   "name": "upgrade-reason-react",
-  "version": "0.0.1",
+  "version": "0.8.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -27,6 +27,6 @@
   },
   "homepage": "https://github.com/chenglou/upgrade-reason-react-to-031#readme",
   "dependencies": {
-    "bs-platform": "github:bsansouci/bsb-native#3.2.0"
+    "bsb-native": "^4.0.6"
   }
 }

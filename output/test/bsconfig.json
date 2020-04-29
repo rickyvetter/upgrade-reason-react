@@ -12,7 +12,7 @@
   ],
   "suffix": ".bs.js",
   "namespace": true,
-  "bs-dependencies": ["reason-react", "reason-react-compat"],
+  "bs-dependencies": ["reason-react"],
   "refmt": 3,
   "reason": {"react-jsx": 3}
 }

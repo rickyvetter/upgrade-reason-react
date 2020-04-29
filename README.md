@@ -1,19 +1,9 @@
-# You probably want https://github.com/bloodyowl/upgrade-reason-react-esy instead
-
----
-
 ## ReasonReact migration script
 
-**Experimental, use with caution!**
+For migrating from 0.7 to 0.8. Running attempts to find React.ref usage and convert to the new record shape. It cannot find all React.ref usage - particularly if the code opens modules. In this case you might have to manually convert some code.
 
 ### Usage
 
 ```console
 find src -name "*.re" | ./node_modules/upgrade-reason-react/lib/bs/bytecode/migrate.byte
 ```
-
-### Known issues
-
-- Children spread (`...children`) need to be fixed by hand
-- Some children type declaration might need so tweaking
-- `Style.{"foo": styles}` will error (`Style.({"foo": styles})` works)

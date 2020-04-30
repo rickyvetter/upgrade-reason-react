@@ -1,5 +1,3 @@
-open Belt;
-
 open Refmt_api.Migrate_parsetree;
 open Ast_404;
 open Ast_helper;
@@ -158,12 +156,14 @@ let refactorMapper = {
   },
 };
 
+module StringSet = Set.Make(String);
+
 let read = () => {
-  let set = ref(Belt.Set.String.empty);
+  let set = ref(StringSet.empty);
   let rec read = () =>
-    try (
+    try(
       {
-        set := set^ |. Belt.Set.String.add(stdin |. input_line);
+        set := set^ |> StringSet.add(stdin |> input_line);
         read();
       }
     ) {
@@ -173,24 +173,24 @@ let read = () => {
   set^;
 };
 
-let main = () =>
+let main = () => {
   switch (Sys.argv) {
   | [||]
   | [|"help" | "-help" | "--help"|] =>
     print_endline("upgrade-reason-react");
     print_endline("Helps you migrate ReasonReact from 0.6 to 0.7");
-    print_endline("Usage: find src/**/*.re | migrate");
+    print_endline("Usage: find src/**/*.re | Upgrade");
     print_endline("Usage: pass a list of .re files you'd like to convert.");
   | args =>
     read()
-    |. Set.String.keep(item => Filename.extension(item) == ".re")
+    |> StringSet.filter(item => Filename.extension(item) == ".re")
     /* Uncomment next line for debug */
     /* && ! String.contains(item, '_') */
-    |. Set.String.forEach(fileName =>
+    |> StringSet.iter(fileName =>
          try (
            {
              let outputDir =
-               args |. Array.some(item => item == "--demo") ? "output/" : "";
+               args |> Array.exists(item => item == "--demo") ? "output/" : "";
              let file = fileName |. Filename.remove_extension;
              let ic = open_in_bin(file ++ ".re");
              let lexbuf = Lexing.from_channel(ic);
@@ -240,13 +240,13 @@ let main = () =>
          ) {
          | _ =>
            let outputDir =
-             args |. Array.some(item => item == "--demo") ? "output/" : "";
+             args |> Array.exists(item => item == "--demo") ? "output/" : "";
            let file = fileName |. Filename.remove_extension;
            let target = outputDir ++ file ++ ".re";
            print_endline({js|❗️️ Errored on |js} ++ target);
-         }
-       );
+         });
     print_endline("Done!");
   };
+};
 
 main();

@@ -2,14 +2,18 @@
 # yarn lockfile v1
 
 
-bs-platform-native@^0.0.6:
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/bs-platform-native/-/bs-platform-native-0.0.6.tgz#9f7e403a61429769aef5be9537ec977a1719cc1f"
-  integrity sha512-k2o1HzRTgcAtIzwu/RkPKwTQmvROvc31kxJU4ELryr1vgiqaxp0Dx6iKwmM8v4fn7VurXUkLcffi/3rrASryDw==
+bs-platform-native@0.0.11, bs-platform-native@^0.0.6:
+  version "0.0.11"
+  resolved "https://registry.yarnpkg.com/bs-platform-native/-/bs-platform-native-0.0.11.tgz#527714f10291919ae3cb11ca7b1f6e155dbdf67c"
+  integrity sha512-Mbo61/2+xhkX/Wyf7ujIwdcNrdT+3cJJ93TRD4aO5j5FrRSu4Cc0GxkPR6NtMjRYyL0HrIuYe5Y9Bd7kM6hmdQ==
 
-bsb-native@5.0.0:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/bsb-native/-/bsb-native-5.0.0.tgz#f980df9f2b02c738f11e2d5948094c15ef7345cf"
-  integrity sha512-lB7s/Ulpv5Qu51S95sPaYIfpaMOuiS0wl372pDr7/5ARdB5TF8D6gujSdWJl0mEkpMxaAP+Iyljq4TGpjg7WgQ==
+bsb-native@5.0.3:
+  version "5.0.3"
+  resolved "https://registry.yarnpkg.com/bsb-native/-/bsb-native-5.0.3.tgz#8af40e96ab35fe9f557d6364393c55c58697cede"
+  integrity sha512-DqEha+PLO2WngHXAP2swIEu6U3RYmQqFU2dCCa9N2tUetYgTKakVYQm41T1KC/5PVvuW1qmZHrDTqk1PUnK97Q==
   dependencies:
     bs-platform-native "^0.0.6"
+
+"compiler-libs@github:bsansouci/otherlibs":
+  version "0.0.1"
+  resolved "https://codeload.github.com/bsansouci/otherlibs/tar.gz/6332dc8176f14dd3c6467b92d10be73237217b4c"

@@ -5,5 +5,5 @@ For migrating from 0.7 to 0.8. Running attempts to find React.ref usage and conv
 ### Usage
 
 ```console
-find src -name "*.re" | ./node_modules/upgrade-reason-react/lib/bs/bytecode/migrate.byte
+find src -name "*.re" | ./node_modules/upgrade-reason-react/migrate.exe
 ```

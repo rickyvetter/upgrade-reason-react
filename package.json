@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "bsb -backend bytecode -w",
+    "start": "bsb -w",
     "clean": "bsb -clean",
-    "postinstall": "bsb -backend bytecode",
-    "test": "cd output/test && rm -fr cases && mkdir cases && yarn && cd ../.. && bsb && find test/cases/*.re | lib/bs/bytecode/migrate.byte --demo && cd output/test && ./node_modules/.bin/bsb -make-world"
+    "postinstall": "bsb",
+    "test": "cd output/test && rm -fr cases && mkdir cases && yarn && cd ../.. && bsb && find test/cases/*.re | ./migrate.exe --demo && cd output/test && ./node_modules/.bin/bsb -make-world"
   },
   "files": [
     "src/refmt_api.ml",
@@ -27,6 +27,11 @@
   },
   "homepage": "https://github.com/chenglou/upgrade-reason-react-to-031#readme",
   "dependencies": {
-    "bsb-native": "5.0.0"
+    "bsb-native": "5.0.3",
+    "bs-platform-native": "0.0.11",
+    "compiler-libs": "github:bsansouci/otherlibs"
+  },
+  "resolutions": {
+    "bsb-native/bs-platform-native": "0.0.11"
   }
 }

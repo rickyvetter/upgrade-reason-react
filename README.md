@@ -4,6 +4,8 @@ For migrating from 0.7 to 0.8. Running attempts to find React.ref usage and conv
 
 ### Usage
 
+Upgrading from reason-react 0.7.0 to 0.8.0: `npm install https://github.com/rickyvetter/upgrade-reason-react\#0.7.0-to-0.8.0`
+
 ```console
-find src -name "*.re" | ./node_modules/upgrade-reason-react/lib/bs/bytecode/migrate.byte
+find src -name "*.re" | upgrade-reason-react
 ```

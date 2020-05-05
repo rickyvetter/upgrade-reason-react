@@ -1,0 +1,52 @@
+{
+  "checksum": "7de36ca2d6f67f8046b80b09103601bb",
+  "root": "test@link-dev:./package.json",
+  "node": {
+    "test@link-dev:./package.json": {
+      "id": "test@link-dev:./package.json",
+      "name": "test",
+      "version": "link-dev:./package.json",
+      "source": {
+        "type": "link-dev",
+        "path": ".",
+        "manifest": "package.json"
+      },
+      "overrides": [],
+      "dependencies": [
+        "reason-react@git:git://github.com/reasonml/reason-react.git#19e47a3810e30ea57c0e1a59351aa092b9f6749e@d41d8cd9",
+        "bs-platform@7.3.1@d41d8cd9"
+      ],
+      "devDependencies": []
+    },
+    "reason-react@git:git://github.com/reasonml/reason-react.git#19e47a3810e30ea57c0e1a59351aa092b9f6749e@d41d8cd9": {
+      "id":
+        "reason-react@git:git://github.com/reasonml/reason-react.git#19e47a3810e30ea57c0e1a59351aa092b9f6749e@d41d8cd9",
+      "name": "reason-react",
+      "version":
+        "git:git://github.com/reasonml/reason-react.git#19e47a3810e30ea57c0e1a59351aa092b9f6749e",
+      "source": {
+        "type": "install",
+        "source": [
+          "git:git://github.com/reasonml/reason-react.git#19e47a3810e30ea57c0e1a59351aa092b9f6749e"
+        ]
+      },
+      "overrides": [],
+      "dependencies": [ "bs-platform@7.3.1@d41d8cd9" ],
+      "devDependencies": []
+    },
+    "bs-platform@7.3.1@d41d8cd9": {
+      "id": "bs-platform@7.3.1@d41d8cd9",
+      "name": "bs-platform",
+      "version": "7.3.1",
+      "source": {
+        "type": "install",
+        "source": [
+          "archive:https://registry.npmjs.org/bs-platform/-/bs-platform-7.3.1.tgz#sha1:2c148fb8aef687c6c195eae5821b31e887fb5bc4"
+        ]
+      },
+      "overrides": [],
+      "dependencies": [],
+      "devDependencies": []
+    }
+  }
+}

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "npx esy",
-    "test": "cd output/test && rm -fr cases && mkdir cases && yarn && cd ../.. && cp ./_esy/default/build/default/src/Migrate.exe ./migrate.exe && find test/cases/*.re | ./migrate.exe --demo && cd output/test && ./node_modules/.bin/bsb -make-world"
+    "test": "cd output/test && rm -fr cases && mkdir cases && yarn && cd ../.. && npx esy && cp ./_esy/default/build/default/src/Migrate.exe ./migrate.exe && find test/cases/*.re | ./migrate.exe --demo && cd output/test && ./node_modules/.bin/bsb -make-world"
   },
   "files": [
     "bsconfig.json",

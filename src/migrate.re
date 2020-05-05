@@ -89,7 +89,7 @@ let refactorMapper = {
             ],
           ),
       } =>
-      Exp.field(exp, {loc, txt: Ldot(Lident("React"), "current")})
+      Exp.field(mapper.expr(mapper, exp), {loc, txt: Ldot(Lident("React"), "current")})
     | {
         pexp_desc:
           Pexp_apply(
@@ -132,10 +132,30 @@ let refactorMapper = {
           ),
       } =>
       Exp.setfield(
-        exp,
+        mapper.expr(mapper, exp),
         {loc, txt: Ldot(Lident("React"), "current")},
-        thingToApply,
+        mapper.expr(mapper, thingToApply),
       )
+    | {
+        pexp_desc:
+          Pexp_apply(
+            exp,
+            args,
+          ),
+        pexp_attributes: [{attr_name: {txt: "JSX"}}]
+      } =>
+      {...expr, pexp_desc: Pexp_apply(mapper.expr(mapper, exp), List.map(((label, arg)) =>
+        switch (label) {
+          | Labelled("crossorigin") => (Labelled("crossOrigin"), mapper.expr(mapper, arg))
+          | Labelled("min") => (
+            Labelled("min"), 
+            Exp.apply(
+              Exp.ident({loc: default_loc^, txt: Lident("string_of_int")}),
+              [(Nolabel, mapper.expr(mapper, arg))],
+            )
+          )
+          | _ => (label, mapper.expr(mapper, arg))
+        }, args))}
     | expr =>
       default_mapper.expr(mapper, expr)
     };

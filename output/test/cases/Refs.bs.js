@@ -7,7 +7,14 @@ function Refs$myComponent(Props) {
   var myRef = React.useRef(React.createElement("div", undefined));
   myRef.current = React.createElement("span", undefined);
   myRef.current = React.createElement("p", undefined);
-  return myRef.current === myRef.current;
+  if (myRef.current === myRef.current) {
+    return React.createElement("div", {
+                crossOrigin: "true",
+                min: String(1)
+              });
+  } else {
+    return null;
+  }
 }
 
 var myComponent = Refs$myComponent;

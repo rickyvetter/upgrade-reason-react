@@ -4,29 +4,31 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "bsb -w",
-    "clean": "bsb -clean",
-    "postinstall": "bsb",
-    "test": "cd output/test && rm -fr cases && mkdir cases && yarn && cd ../.. && bsb && find test/cases/*.re | lib/bs/bytecode/migrate.byte --demo && cd output/test && ./node_modules/.bin/bsb -make-world"
+    "start": "npx esy",
+    "postinstall": "npx esy",
+    "test": "cd output/test && rm -fr cases && mkdir cases && yarn && cd ../.. && cp ./_esy/default/build/default/src/Migrate.exe ./migrate.exe && find test/cases/*.re | ./migrate.exe --demo && cd output/test && ./node_modules/.bin/bsb -make-world"
   },
   "files": [
-    "src/refmt_api.ml",
-    "src/migrate.re",
     "bsconfig.json",
+    "esy.json",
+    "dune",
+    "dune-project",
+    "migrate.opam",
+    "migrate.exe",
+    "src/migrate.re",
+    "src/dune",
     "README.md"
   ],
+  "bin": "/migrate.exe",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chenglou/upgrade-reason-react-to-031.git"
+    "url": "git+https://github.com/rickyvetter/upgrade-reason-react"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/chenglou/upgrade-reason-react-to-031/issues"
+    "url": "https://github.com/rickyvetter/upgrade-reason-react"
   },
-  "homepage": "https://github.com/chenglou/upgrade-reason-react-to-031#readme",
-  "dependencies": {
-    "bsb-native": "^4.0.6"
-  }
+  "homepage": "https://github.com/rickyvetter/upgrade-reason-react"
 }

@@ -1,3 +1,5 @@
+// inline comment to check Reason versions
+
 [@react.component]
 let myComponent = () => {
   let myRef: React.ref(React.element) = React.useRef(<div />);

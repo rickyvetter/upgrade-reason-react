@@ -7,3 +7,5 @@
 *__migrated.re
 *__migrated.rei
 .bsb.lock
+*.install
+_esy

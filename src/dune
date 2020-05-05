@@ -1,0 +1,12 @@
+(
+  executable
+    (modes byte)
+    (public_name migrate.exe)
+    ; The main module that will become the binary.
+    (name Migrate)
+
+    (flags "-w" "+6+26+27+32+33+39")
+
+    ; Depends on:
+    (libraries reason unix compiler-libs.common)
+)

@@ -18,7 +18,7 @@
     "src/dune",
     "README.md"
   ],
-  "bin": "/migrate.exe",
+  "bin": "./migrate.exe",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rickyvetter/upgrade-reason-react"
